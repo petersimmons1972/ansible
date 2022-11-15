@@ -1,0 +1,19 @@
+---
+  - hosts: linux k8s rhel
+    become: yes
+    name: Install SentinelOne Linux agent
+    vars:
+      rpm_agent_installer_url: https://your_url/SentinelAgent_Linux_version.rpm
+      deb_agent_installer_url: https://your_url/SentinelAgent_Linux_version.deb
+      registration_token: "your_token"
+
+    tasks:
+    -   name: Get dmesg
+        ansible.builtin.command: dmesg
+        register: dmesg_output
+
+    -   name: Assert that host is stable
+        ansible.builtin.assert:
+         that:
+          - "'FUNCTION TRACING IS CORRUPTED' not in dmesg_output.stdout"
+         fail_msg: 'System Instability Detected'

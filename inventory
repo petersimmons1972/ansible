@@ -6,15 +6,19 @@ docker.petersimmons.com
 cloudron.petersimmons.com
 pihole1.petersimmons.com
 pihole2.petersimmons.com
-route10.petersimmons.com
+route10.petersimmons.lan
 proxy.petersimmons.com
 
 [k8s]
 192.168.0.130
 192.168.0.131
 192.168.0.132
-192.168.0.132
 192.168.0.133
+192.168.0.134
+
+[rhel]
+192.168.0.142
+192.168.0.143
 
 [windows]
 dagger.petesimmons.lan
@@ -30,3 +34,12 @@ obelisk.petersimmons.com
 rattlesnake.petersimmons.com
 providence.petersimmons.com
 wyvern.petersimmons.com
+
+[windows:vars]
+ansible_connection=winrm
+ansible_port=5986
+ansible_winrm_server_cert_validation=ignore
+ansible_user=ansible@petersimmons.com
+ansible_password=
+ansible_transport=kerberos
+
