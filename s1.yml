@@ -1,0 +1,79 @@
+---
+  - hosts: linux rhel
+    become: yes
+    name: Install SentinelOne Linux agent
+    vars:
+      rpm_agent_installer_url: http://charon.petersimmons.com/s1/SentinelAgent_linux_v22_3_3_11.rpm
+      deb_agent_installer_url: http://charon.petersimmons.com/s1/SentinelAgent_linux_v22_3_3_11.deb
+      registration_token: "REDACTED_SENTINELONE_TOKENImdfMTcxYThhYzg1YzczZTdjYSJ9"
+
+    tasks:
+    -   name: Get dmesg
+        ansible.builtin.command: dmesg
+        register: dmesg_output
+
+    -   name: Assert that host is stable
+        ansible.builtin.assert:
+         that:
+          - "'FUNCTION TRACING IS CORRUPTED' not in dmesg_output.stdout"
+         fail_msg: 'System Instability Detected'
+
+    -   name: Check that the sentinelctl exists
+        stat:
+          path: /opt/sentinelone/bin/sentinelctl
+        become: true
+        register: sentinelctl_exists
+
+    -   name: Create temporary folder to place the installer
+        file:
+          path: /tmp/sentinel_installer
+          state: directory
+          mode: '0755'
+        when: sentinelctl_exists.stat.exists == False
+
+    -   name: Get SentinelAgent DEB package from remote location
+        get_url:
+          url: "{{ deb_agent_installer_url }}"
+          dest: "/tmp/sentinel_installer/sentinelone_installer.deb"
+          mode: '0777'
+        when: sentinelctl_exists.stat.exists == False and ansible_facts['os_family'] == "Debian"
+
+    -   name: Get SentinelAgent RPM package from remote location
+        get_url:
+          url: "{{ rpm_agent_installer_url }}"
+          dest: "/tmp/sentinel_installer/sentinelone_installer.rpm"
+          mode: '0777'
+        when: sentinelctl_exists.stat.exists == False and ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_version'] is version( '6.4', '>=')
+
+    -   name: Install the Linux Agent on Debian based distro
+        command: dpkg -i /tmp/sentinel_installer/sentinelone_installer.deb
+        become: true
+        when: sentinelctl_exists.stat.exists == False and ansible_facts['os_family'] == "Debian"
+
+    -   name: Install the Linux Agent on Red Hat based distro
+        command: rpm -i --nodigest /tmp/sentinel_installer/sentinelone_installer.rpm
+        become: true
+        become_user: root
+        become_method: sudo
+        when: sentinelctl_exists.stat.exists == False and ansible_facts['os_family'] == "RedHat" and ansible_facts['distribution_version'] is version( '6.4', '>=')
+
+    -   name: Apply the registration token to the agent
+        command: /opt/sentinelone/bin/sentinelctl management token set {{ registration_token }}
+        become_user: root
+        become_method: sudo
+        become: true
+        when: sentinelctl_exists.stat.exists == False
+
+    -   name: Start the SentinelOne agent
+        command: /opt/sentinelone/bin/sentinelctl control start
+        become_user: root
+        become_method: sudo
+        become: true
+
+    -   name: Delete the installer folder
+        file:
+          path: /tmp/sentinel_installer
+          state: absent
+        become_user: root
+        become_method: sudo
+        become: true
